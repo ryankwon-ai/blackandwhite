@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>바둑돌 자리 바꾸기: 1:1 AI 배틀</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="game-wrapper">
+
+    <!-- ========================================== -->
+    <!-- 1. INTRO SCREEN                            -->
+    <!-- ========================================== -->
+    <div id="introScreen" class="screen active">
+      <div class="intro-container">
+        <div class="intro-badge">1 VS 1 STRATEGY BATTLE</div>
+        <h1 class="intro-title">
+          <span class="highlight-black">바둑돌</span> 자리 바꾸기
+          <span class="battle-vs">AI BATTLE</span>
+        </h1>
+        <p class="intro-desc">
+          [그림 1]의 바둑돌을 규칙에 따라 움직여 [그림 2]의 목표 배치를 완성하세요!<br>
+          사용자와 컴퓨터가 번갈아 수를 두며, <strong>마지막 완성 수를 두는 자가 승리</strong>합니다.
+        </p>
+
+        <!-- Visual Board Preview Banner -->
+        <div class="intro-visual">
+          <div class="intro-stone intro-black"></div>
+          <div class="intro-vs-badge">VS</div>
+          <div class="intro-stone intro-white"></div>
+        </div>
+
+        <div class="intro-actions">
+          <button id="startGameBtn" class="btn btn-start">
+            <span class="btn-icon-play">▶</span> 게임 스타트
+          </button>
+          <button id="introRuleBtn" class="btn btn-secondary-arcade">📜 게임 규칙 보기</button>
+        </div>
+
+        <div class="intro-footer-rules">
+          <div class="rule-chip">① 1칸 1돌</div>
+          <div class="rule-chip">② 인접 빈칸 1칸 이동</div>
+          <div class="rule-chip">③ 다른 색 돌 1개 점프</div>
+          <div class="rule-chip">👑 사용자 선공</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 2. GAME SCREEN                             -->
+    <!-- ========================================== -->
+    <div id="gameScreen" class="screen">
+      <!-- Top Battle HUD -->
+      <header class="battle-hud">
+        <div class="hud-player user-profile active" id="userProfile">
+          <div class="avatar avatar-user">👤</div>
+          <div class="player-info">
+            <span class="player-role">PLAYER 1 (선공)</span>
+            <span class="player-name">사용자</span>
+          </div>
+        </div>
+
+        <div class="turn-announcer" id="turnAnnouncer">
+          <div class="turn-glow-bg"></div>
+          <div class="turn-label" id="turnLabel">YOUR TURN</div>
+          <div class="turn-sub" id="turnSub">이동할 바둑돌을 선택하세요</div>
+        </div>
+
+        <div class="hud-player cpu-profile" id="cpuProfile">
+          <div class="player-info text-right">
+            <span class="player-role">PLAYER 2 (후공)</span>
+            <span class="player-name">컴퓨터 AI</span>
+          </div>
+          <div class="avatar avatar-cpu">🤖</div>
+        </div>
+      </header>
+
+      <!-- Main Battle Workspace -->
+      <main class="battle-main">
+        <!-- Left: Game Board Section -->
+        <section class="board-area">
+          <div class="board-meta-bar">
+            <div class="meta-item">
+              <span class="meta-label">총 이동</span>
+              <span id="turnCounter" class="meta-val">0</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">시간</span>
+              <span id="timerText" class="meta-val">00:00</span>
+            </div>
+            <div class="meta-item progress-meta">
+              <span class="meta-label">목표 [그림 2] 일치율</span>
+              <div class="progress-bar-container">
+                <div id="progressBar" class="progress-bar-fill" style="width: 0%;"></div>
+              </div>
+              <span id="matchPercent" class="meta-percent">0%</span>
+            </div>
+          </div>
+
+          <!-- 5x5 Baduk Goban Board -->
+          <div class="goban-frame">
+            <div class="goban-wood" id="goban">
+              <!-- Dynamically populated 25 cells -->
+            </div>
+          </div>
+
+          <!-- In-game bottom bar -->
+          <div class="board-footer-bar">
+            <div class="tip-banner" id="tipBanner">
+              💡 <strong>규칙:</strong> 빈칸에 인접한 돌을 클릭하거나, 다른 색 돌을 뛰어넘을 수 있는 돌을 클릭하세요!
+            </div>
+            <div class="footer-actions">
+              <button id="soundToggleBtn" class="btn btn-hud" title="효과음 켜기/끄기">🔊 소리 켜짐</button>
+              <button id="gameRuleBtn" class="btn btn-hud" title="규칙 확인">📖 규칙</button>
+              <button id="forfeitBtn" class="btn btn-hud btn-danger" title="기권하기">🏳️ 기권</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Right: Goal & Battle Log Panel -->
+        <aside class="battle-sidebar">
+          <!-- Target Goal Card -->
+          <div class="side-card goal-card">
+            <div class="card-title">
+              <span>🎯 최종 목표 [그림 2]</span>
+              <span class="target-tag">GOAL</span>
+            </div>
+            <div class="mini-goban-box">
+              <div class="mini-goban" id="miniGoalGoban">
+                <!-- 5x5 Goal preview -->
+              </div>
+            </div>
+            <p class="goal-subtext">
+              먼저 이 상태를 <strong>완성하는 플레이어가 즉시 승리</strong>합니다!
+            </p>
+          </div>
+
+          <!-- Battle Move History Log -->
+          <div class="side-card log-card">
+            <div class="card-title">
+              <span>⚔️ 대전 수첩</span>
+              <span class="log-count" id="logCountBadge">0 수</span>
+            </div>
+            <div class="log-list-scroll" id="logList">
+              <div class="log-empty">게임 시작 대기 중...</div>
+            </div>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 3. RESULT SCREEN                           -->
+    <!-- ========================================== -->
+    <div id="resultScreen" class="screen">
+      <div class="result-container">
+        <div id="resultBanner" class="result-banner victory">
+          <div class="result-emblem" id="resultEmblem">🏆</div>
+          <h1 class="result-title" id="resultTitle">VICTORY! 사용자 승리</h1>
+          <p class="result-subtitle" id="resultSubtitle">
+            완벽한 판단으로 마지막 결정타를 놓아 [그림 2] 배치를 완성했습니다!
+          </p>
+        </div>
+
+        <div class="result-stats-grid">
+          <div class="stat-card">
+            <span class="stat-title">최종 승자</span>
+            <span class="stat-content highlight-winner" id="resWinnerName">사용자</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-title">총 소요 턴</span>
+            <span class="stat-content" id="resTotalTurns">0 턴</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-title">경기 시간</span>
+            <span class="stat-content" id="resDuration">00:00</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-title">사용자 / PC 착수</span>
+            <span class="stat-content" id="resMoveSplit">0 / 0</span>
+          </div>
+        </div>
+
+        <div class="result-actions">
+          <button id="rematchBtn" class="btn btn-start">
+            <span class="btn-icon-play">⚔️</span> 다시 대결하기
+          </button>
+          <button id="goIntroBtn" class="btn btn-secondary-arcade">
+            🏠 메인 화면으로
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Rules Modal Dialog -->
+  <div id="rulesModal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>📖 바둑돌 1:1 대전 규칙</h3>
+        <button id="closeRulesBtn" class="btn-close-modal">&times;</button>
+      </div>
+      <div class="modal-content">
+        <div class="rule-box">
+          <h4>① 한 칸 한 돌 원칙</h4>
+          <p>바둑판 25칸에는 최대 1개의 바둑돌만 놓을 수 있습니다. 돌이 잡히거나 사라지지 않습니다.</p>
+        </div>
+        <div class="rule-box">
+          <h4>② 인접 빈칸 이동 (1칸 슬라이드)</h4>
+          <p>상·하·좌·우의 인접 칸이 비어 있을 때 그 빈칸으로 바둑돌을 옮길 수 있습니다.</p>
+        </div>
+        <div class="rule-box">
+          <h4>③ 다른 색 돌 건너뛰기 (2칸 점프)</h4>
+          <p>상·하·좌·우에 <strong>다른 색의 바둑돌이 1개</strong> 있고 그 다음 칸이 비어 있을 때 뛰어넘어 이동할 수 있습니다. (같은 색 돌 점프 불가, 대각선 이동 불가)</p>
+        </div>
+        <div class="rule-box highlight-rule">
+          <h4>👑 1:1 대결 승리 조건 (방식 1)</h4>
+          <p>
+            선공(사용자)부터 번갈아가며 규칙에 맞는 바둑돌을 움직입니다.<br>
+            <strong>[그림 2] 목표 상태를 최종 완성하는 수를 둔 플레이어가 즉시 승리</strong>합니다!
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="confirmRulesBtn" class="btn btn-start btn-sm">확인했습니다</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confetti Canvas for Victory Celebration -->
+  <canvas id="confettiCanvas"></canvas>
+
+  <script src="game.js"></script>
+</body>
+</html>
